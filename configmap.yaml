@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init
+  namespace: mongo-cluster
+data:
+  init.sh: |
+    #!/bin/bash
+    set -e
+
+    until ping -c 1 ${HOSTNAME}.mongo; do
+      echo "Waiting for DNS (${HOSTNAME}.mongo)..."
+      sleep 2
+    done
+
+    until mongo --eval 'db.serverStatus()'; do
+      echo "Waiting for local MongoDB..."
+      sleep 2
+    done
+
+    HOST=mongo-0.mongo:27017
+
+    until mongo --host=${HOST} --eval 'db.serverStatus()'; do
+      echo "Waiting for primary MongoDB (mongo-0)..."
+      sleep 2
+    done
+
+    if [[ "${HOSTNAME}" != 'mongo-0' ]]; then
+      until mongo --host=${HOST} --eval="rs.status()" | grep -v "no replset config"; do
+        echo "Waiting for ReplicaSet initialization..."
+        sleep 2
+      done
+      echo "Adding self to ReplicaSet..."
+      mongo --host=${HOST} --eval="rs.add('${HOSTNAME}.mongo:27017')"
+    else
+      echo "Initializing ReplicaSet..."
+      mongo --eval="rs.initiate({
+        _id: 'rs0',
+        members: [
+          { _id: 0, host: 'mongo-0.mongo:27017' }
+        ]
+      })"
+    fi
+
+    echo "ReplicaSet initialized."
+    sleep 3600
