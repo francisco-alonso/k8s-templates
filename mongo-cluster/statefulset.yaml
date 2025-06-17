@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mongo
-  namespace: mongo-cluster
+  namespace: default
 spec:
   serviceName: "mongo"
   replicas: 3
@@ -15,6 +15,16 @@ spec:
         app: mongo
     spec:
       containers:
+        - name: init-mongo
+          image: mongo:3.4.1
+          command:
+            - bash
+            - /config/init.sh
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: mongo-persistent-storage
+              mountPath: /data/db
         - name: mongodb
           image: mongo:3.4.1
           command:
@@ -35,17 +45,6 @@ spec:
                 - db.serverStatus()
             initialDelaySeconds: 10
             timeoutSeconds: 10
-      initContainers:
-        - name: init-mongo
-          image: mongo:3.4.1
-          command:
-            - bash
-            - /config/init.sh
-          volumeMounts:
-            - name: config
-              mountPath: /config
-            - name: mongo-persistent-storage
-              mountPath: /data/db
       volumes:
         - name: config
           configMap:
