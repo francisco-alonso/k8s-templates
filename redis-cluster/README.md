@@ -13,3 +13,9 @@ kubectl create configmap redis-config --from-file=slave.conf=./slave.conf --from
 kubectl apply -f redis.yaml
 kubectl apply -f redis-service
 ```
+
+```bash
+#DNS instances reachable from inside the cluster
+Master: redis-0.redis.default.svc.cluster.local
+Slave: redis-1.redis.default.svc.cluster.local
+```
